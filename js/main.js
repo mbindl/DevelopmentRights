@@ -5,6 +5,7 @@
         "esri/widgets/FeatureForm",
         "esri/layers/FeatureLayer",
         "esri/layers/TileLayer",
+        "esri/layers/MapImageLayer",
         "esri/widgets/Measurement",
         "esri/widgets/Expand",
         "esri/widgets/BasemapGallery",
@@ -33,6 +34,7 @@
         FeatureForm,
         FeatureLayer,
         TileLayer,
+        MapImageLayer,
         Measurement,
         Expand,
         BasemapGallery,
@@ -66,7 +68,7 @@
         const infoDiv = document.getElementById("info");
 
         // create new map, view and csvlayer
-        const gridFields = ["OBJECTID", "APN", "JURISDICTION", "OWN_FULL", "OWNERSHIP_TYPE","COUNTY_LANDUSE_DESCRIPTION", "TRPA_LANDUSE_DESCRIPTION", "IMPERVIOUS_SURFACE_SQFT", "AS_SUM", "UNITS"
+        const gridFields = ["OBJECTID", "APN", "JURISDICTION", "OWN_FULL", "OWNERSHIP_TYPE","COUNTY_LANDUSE_DESCRIPTION", "TRPA_LANDUSE_DESCRIPTION", "IMPERVIOUS_SURFACE_SQFT", "AS_SUM", "UNITS", "ZONING_DESCRIPTION", "PARCEL_ACRES", "RESIDENTIAL_UNITS", "COMMERCIAL_FLOOR_AREA", "TOURIST_UNITS", "IPES_SCORE", "VACANT_BUILDABLE", "RETIRED" 
         ];
         // create the map instance
         var map = new Map({
@@ -162,6 +164,13 @@
           
         // add land use layer to the map
         map.add(landuseLayer);
+          
+        // constrcut development rights feature set
+        const devRights = new MapImageLayer({
+            url: "https://maps.trpa.org/server/rest/services/Development_Rights_Transacted_and_Banked/MapServer"
+          });
+        
+        map.add(devRights);
 
         // construct TRPA Boundary layer
         const builtLayer = new FeatureLayer({
