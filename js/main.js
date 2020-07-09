@@ -17,7 +17,7 @@
         "esri/widgets/Legend",
         "esri/widgets/Print",
         "esri/widgets/Locate",
-        "esri/widgets/Track",
+        "esri/widgets/Fullscreen",
         "esri/Graphic",
         "esri/widgets/Editor",
         "esri/layers/support/LabelClass",
@@ -46,7 +46,7 @@
         Legend,
         Print,
         Locate,
-        Track,
+        Fullscreen,
         Graphic,
         Editor,
         LabelClass,
@@ -90,7 +90,8 @@
                 }
               }
             });
-          
+        
+        
 
         // construct regional land use layer
         const regionalLayer = new FeatureLayer({
@@ -657,7 +658,7 @@
             expanded: false,
             group: "bottom-left"
         });
-          
+
         view.ui.add(legend, "bottom-left");  
 
         const landuseNodes = document.querySelectorAll(`.landuse-item`);
@@ -673,7 +674,7 @@
             where: "TRPA_LANDUSE_DESCRIPTION" + selectedLanduse
           };
         }
-        
+
         // after land use layer loads create the widget
         view.whenLayerView(landuseLayer).then(function(layerView) {
           // land use layer loaded
@@ -682,7 +683,7 @@
 
         // set up UI items
         landuseElement.style.visibility = "visible";
-        
+
         const landuseExpand = new Expand({
             view: view,
             content: landuseElement,
@@ -690,7 +691,7 @@
             expandIconClass: "esri-icon-filter",
             group: "top-right"
           });
-        
+
         //clear the filters when user closes the expand widget
         landuseExpand.watch("expanded", function() {
             if (!landuseExpand.expanded) {
@@ -700,35 +701,25 @@
         view.ui.add(landuseExpand, "top-right");
         });
           
-      var locate = new Locate({
+        var locate = new Locate({
         view: view,
         useHeadingEnabled: false,
         goToOverride: function(view, options) {
           options.target.scale = 1500;  // Override the default map scale
           return view.goTo(options.target);
         }
-      });
+        });
 
-      view.ui.add(locate, "top-left");
-        
-      var track = new Track({
-        view: view,
-        graphic: new Graphic({
-          symbol: {
-            type: "simple-marker",
-            size: "12px",
-            color: "blue",
-            outline: {
-              color: "#efefef",
-              width: "1.5px"
-            }
-          }
-        }),
-        useHeadingEnabled: false  // Don't change orientation of the map
-      });
+        view.ui.add(locate, "top-left");
 
-      view.ui.add(track, "top-left");
+        view.ui.add(
+          new Fullscreen({
+            view: view,
+          }),
+          "top-left"
+        );
         
-    // Add grid expand to the view
-    view.ui.add(gridExpand, "bottom-right");
-    });
+        // Add grid expand to the view
+        view.ui.add(gridExpand, "bottom-right");
+          
+        });
