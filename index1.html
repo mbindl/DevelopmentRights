@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>Development Rights Map</title>
+ 
+    <link href="assets/favicon.ico" rel="icon" >
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.14/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.14/"></script>
+    <script src="js/main.js"></script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+  <div id="select-by-polygon" class="esri-widget esri-widget--button esri-widget esri-interactive" title="Select features by polygon">
+    <span class="esri-icon-checkbox-unchecked"></span>
+  </div>
+  <div id="btn-export" class="esri-widget esri-widget--button esri-widget esri-interactive" title="Export to CSV">
+    <span class="esri-icon-download"></span>
+  </div>
+    <div id="landuse-filter" class="esri-widget">
+      <div class="landuse-item visible-landuse" data-landuse= " = 'Vacant'">Vacant</div>
+      <div class="landuse-item visible-landuse" data-landuse= " IN ('Single Family Residential', 'Multi-Family Residential','Condominium', 'Condominium Common Area')">Residential</div>
+      <div class="landuse-item visible-landuse" data-landuse= " IN ('Commercial', 'Mixed Use', 'Tourist Accommodation')">Commercial</div>
+      <div class="landuse-item visible-landuse" data-landuse= " IN ('Open Space', 'Recreation', 'Public Service')">Public</div>
+    </div>
+      <div class="overlay-wrap">
+		<input type="checkbox" name="hide" id="hide">
+		<label class="hide" for="hide">X</label>
+		  <div class="overlay2">
+              <div class="overlay">
+                <div class="overlay-inner">
+                  <div class="message">
+                      <p><h2>Development Rights Map</h2></p> 
+                      <p>Use this map to <b>VISUALIZE</b> layers related to land use, <b>SEARCH</b> for a parcel, <b>EDIT</b> it's attributes, <b>FILTER</b> land use displayed in the map, <b>QUERY</b> allowed uses by zoning district, <b>LOCATE</b> where you are, <b>TRACK</b> where you've been, and <b>PRINT</b> a map.</p>
+                  </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="gridDiv" class="esri-widget table-expand">
+    <div id="info">
+      <span class="info" id="featureCount"></span>
+      <div id="grid"></div>
+    </div>
+  </body>
+</html>

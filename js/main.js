@@ -6,6 +6,7 @@
         "esri/layers/FeatureLayer",
         "esri/layers/TileLayer",
         "esri/layers/MapImageLayer",
+        "esri/layers/GraphicsLayer",
         "esri/widgets/Measurement",
         "esri/widgets/Expand",
         "esri/widgets/BasemapGallery",
@@ -29,12 +30,13 @@
         "dgrid/Selection"
       ], function(
         esriConfig,
-        Map,
+        WebMap,
         MapView,
         FeatureForm,
         FeatureLayer,
         TileLayer,
         MapImageLayer,
+        GraphicsLayer,
         Measurement,
         Expand,
         BasemapGallery,
@@ -57,22 +59,34 @@
         StoreAdapter, 
         Selection,
       ) {
-          {
-        esriConfig.portalUrl = "https://maps.trpa.org/portal";
-            };
-          
-        // Initialize variables
-        let highlight, editFeatureparcelLayerView, editor, features, landuseLayerView, grid;
-        
-        const gridDiv = document.getElementById("grid");
-        const infoDiv = document.getElementById("info");
+      {
+    esriConfig.portalUrl = "https://maps.trpa.org/portal";
+        };
 
-        // create new map, view and csvlayer
-        const gridFields = ["OBJECTID", "APN", "JURISDICTION", "OWN_FULL", "OWNERSHIP_TYPE","COUNTY_LANDUSE_DESCRIPTION", "TRPA_LANDUSE_DESCRIPTION", "IMPERVIOUS_SURFACE_SQFT", "AS_SUM", "UNITS", "ZONING_DESCRIPTION", "PARCEL_ACRES", "RESIDENTIAL_UNITS", "COMMERCIAL_FLOOR_AREA", "TOURIST_UNITS", "IPES_SCORE", "VACANT_BUILDABLE", "RETIRED" 
-        ];
-        // create the map instance
-        var map = new Map({
-            basemap: "topo-vector",
+    // Initialize variables
+    let sketchViewModel, highlight, editFeatureparcelLayerView, editor, features, parcelLayerView, landuseLayerView, grid;
+
+    const gridDiv = document.getElementById("grid");
+    const infoDiv = document.getElementById("info");
+
+    let resultFeatures = [];
+
+//    // create a new sketchviewmodel, setup it properties
+//    // set up the click event for the select by polygon button
+//    setUpSketchViewModel();
+//    setupCSV();
+//    sketchViewModel.on("create-complete", function(event) {
+//    // this polygon will be used to query features that intersect it
+//    selectFeatures(event.geometry);
+//    });
+
+
+    const gridFields = ["OBJECTID", "APN", "JURISDICTION", "OWN_FULL", "OWNERSHIP_TYPE","COUNTY_LANDUSE_DESCRIPTION", "TRPA_LANDUSE_DESCRIPTION", "IMPERVIOUS_SURFACE_SQFT", "AS_SUM", "UNITS", "ZONING_DESCRIPTION", "PARCEL_ACRES", "RESIDENTIAL_UNITS", "COMMERCIAL_FLOOR_AREA", "TOURIST_UNITS", "IPES_SCORE", "VACANT_BUILDABLE", "RETIRED" 
+    ];
+        var map = new WebMap({
+              portalItem: { // autocasts as new PortalItem()
+                id: "204dc5f342934f088f7ec4e8aa244829"
+              }
             });
         
         // create teh view for the map
@@ -670,7 +684,7 @@
         // User clicked on landuse to set an attribute filter
         function filterByLandUse(event) {
           const selectedLanduse = event.target.getAttribute("data-landuse");
-          parcelLayerView.filter = {
+          landuseLayerView.filter = {
             where: "TRPA_LANDUSE_DESCRIPTION" + selectedLanduse
           };
         }
@@ -679,7 +693,7 @@
         view.whenLayerView(landuseLayer).then(function(layerView) {
           // land use layer loaded
           // get a reference to the land use layerview
-          parcelLayerView = layerView;
+          landuseLayerView = layerView;
 
         // set up UI items
         landuseElement.style.visibility = "visible";
@@ -695,7 +709,7 @@
         //clear the filters when user closes the expand widget
         landuseExpand.watch("expanded", function() {
             if (!landuseExpand.expanded) {
-              parcelLayerView.filter = null;
+              landuseLayerView.filter = null;
             }
           });
         view.ui.add(landuseExpand, "top-right");
@@ -722,4 +736,189 @@
         // Add grid expand to the view
         view.ui.add(gridExpand, "bottom-right");
           
-        });
+   /****************************************************
+   * Selects features from the layer that intersect
+   * a polygon that user drew using sketch view model
+   ****************************************************/
+  function selectFeatures(geometry) {
+    view.graphics.removeAll();
+    if (landuseLayerView) {
+      // create a query and set its geometry parameter to the
+      // polygon that was drawn on the view
+      const query = {
+        geometry: geometry,
+        outFields: ["*"]
+      };
+
+      // query graphics from the layer view. Geometry set for the query
+      // can be polygon for point features and only intersecting geometries are returned
+      landuseLayerView
+        .queryFeatures(query)
+        .then(function(results) {
+          const graphics = results.features;
+          resultFeatures = graphics;
+          // if the grid div is displayed while query results does not
+          // return graphics then hide the grid div and show the instructions div
+          if (graphics.length > 0) {
+            // zoom to the extent of the polygon with factor 2
+            view.goTo(geometry.extent.expand(2));
+            gridDiv.style.zIndex = 90;
+            infoDiv.style.zIndex = 80;
+            document.getElementById("featureCount").innerHTML =
+              "<b>Showing attributes for " +
+              graphics.length.toString() +
+              " features </b>";
+          } else {
+            gridDiv.style.zIndex = 80;
+            infoDiv.style.zIndex = 90;
+          }
+
+          // remove existing highlighted features
+          if (highlight) {
+            highlight.remove();
+          }
+
+          // highlight query results
+          highlight = landuseLayerView.highlight(graphics);
+
+          // get the attributes to display in the grid
+          const data = graphics.map(function(feature, i) {
+            return (Object.keys(feature.attributes)
+                .filter(function(key) {
+                  // get fields that exist in the grid
+                  return gridFields.indexOf(key) !== -1;
+                })
+                // need to create key value pairs from the feature
+                // attributes so that info can be displayed in the grid
+                .reduce(function(obj, key) {
+                  obj[key] = feature.attributes[key];
+                  return obj;
+                }, {}) );
+          });
+
+          // set the datastore for the grid using the
+          // attributes we got for the query results
+          dataStore.objectStore.data = data;
+          grid.set("collection", dataStore);
+        })
+        .catch(errorCallback);
+    }
+  }
+
+  /************************************************************************
+   * Sets up the sketchViewModel. When user clicks on the select by polygon
+   * button sketchViewModel.create() method is called with polygon param.
+   ************************************************************************/
+  function setUpSketchViewModel() {
+    // polygonGraphicsLayer will be used by the sketchviewmodel
+    // show the polygon being drawn on the view
+    const polygonGraphicsLayer = new GraphicsLayer();
+    map.add(polygonGraphicsLayer);
+
+    // add the select by polygon button the view
+    view.ui.add("select-by-polygon", "bottom-right");
+    const selectButton = document.getElementById("select-by-polygon");
+
+    // click event for the button
+    selectButton.addEventListener("click", function() {
+      clearUpSelection();
+      view.popup.close();
+      // ready to draw a polygon
+      sketchViewModel.create("polygon");
+    });
+
+    // create a new sketch view model set its layer
+    sketchViewModel = new SketchViewModel({
+      view: view,
+      layer: polygonGraphicsLayer,
+      pointSymbol: {
+        type: "simple-marker",
+        color: [255, 255, 255, 0],
+        size: "1px",
+        outline: {
+          color: "gray",
+          width: 0
+        }
+      }
+    });
+  }
+
+  function clearUpSelection() {
+    view.graphics.removeAll();
+    grid.clearSelection();
+  }
+  /*********************************************************
+   * Set up CSV export
+   *********************************************************/
+  
+  function setupCSV() {
+    view.ui.add("btn-export", "top-left");
+    const btn = document.getElementById("btn-export");
+    btn.addEventListener("click", () => {
+      if (resultFeatures.length) {
+        // export to csv
+        const attrs = resultFeatures.map(a => a.attributes);
+        const headers = {};
+        const entry = attrs[0];
+        for (let key in entry) {
+          if (entry.hasOwnProperty(key)) {
+            headers[key] = key;
+          }
+        }
+        exportCSVFile(headers, attrs, "export");
+      }
+    });
+  }
+
+  // export functions
+  // https://medium.com/@danny.pule/export-json-to-csv-file-using-javascript-a0b7bc5b00d2
+  function convertToCSV(objArray) {
+    const array = typeof objArray != "object" ? JSON.parse(objArray) : objArray;
+    let str = "";
+
+    for (let i = 0; i < array.length; i++) {
+      let line = "";
+      for (let index in array[i]) {
+        if (line != "") line += ",";
+
+        line += array[i][index];
+      }
+
+      str += line + "\r\n";
+    }
+
+    return str;
+  }
+
+  function exportCSVFile(headers, items, fileTitle) {
+    if (headers) {
+      items.unshift(headers);
+    }
+
+    // Convert Object to JSON
+    var jsonObject = JSON.stringify(items);
+
+    const csv = convertToCSV(jsonObject);
+
+    const exportedFilenmae = fileTitle + ".csv" || "export.csv";
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    if (navigator.msSaveBlob) {
+      // IE 10+
+      navigator.msSaveBlob(blob, exportedFilenmae);
+    } else {
+      const link = document.createElement("a");
+      if (link.download !== undefined) {
+        // feature detection
+        // Browsers that support HTML5 download attribute
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", exportedFilenmae);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+  }
+});
